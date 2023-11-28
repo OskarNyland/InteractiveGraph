@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Births Per Thousand People</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    canvas {
+      max-width: 80%;
+      margin: auto;
+    }
+
+    .slider-container {
+      width: 80%;
+      margin: 20px auto;
+    }
+
+    #futureYearsLabel, #growthRateLabel {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="lineChart" width="600" height="300"></canvas>
+
+<div class="slider-container">
+  <label for="futureYearsSlider">Years Into the Future:</label>
+  <input type="range" min="1" max="100" value="10" class="slider" id="futureYearsSlider">
+  <p id="futureYearsLabel">Years Into the Future: <span id="selectedFutureYears">10</span></p>
+</div>
+
+<div class="slider-container">
+  <label for="growthRateSlider">Annual Growth Rate:</label>
+  <input type="range" min="-10" max="10" value="0" class="slider" id="growthRateSlider">
+  <p id="growthRateLabel">Selected Growth Rate: <span id="selectedGrowthRate">0%</span></p>
+</div>
+
+<script>
+  // Given data points
+  const givenData = [
+    { year: 1950, births: 13 },
+    { year: 1962, births: 18 },
+    { year: 1976, births: 12 },
+    { year: 2022, births: 9 }
+  ];
+
+  // Function to generate linearly interpolated data
+  function generateInterpolatedData() {
+    const interpolatedData = [];
+    for (let i = 0; i < givenData.length - 1; i++) {
+      const startYear = givenData[i].year;
+      const endYear = givenData[i + 1].year;
+      const startBirths = givenData[i].births;
+      const endBirths = givenData[i + 1].births;
+
+      for (let year = startYear; year < endYear; year++) {
+        const births = startBirths + (endBirths - startBirths) * (year - startYear) / (endYear - startYear);
+        interpolatedData.push({ year: year, births: births });
+      }
+    }
+    return interpolatedData;
+  }
+
+  // Combine given and interpolated data
+  const dummyData = givenData.concat(generateInterpolatedData());
+
+  // Chart.js configuration
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dummyData.map(entry => entry.year),
+      datasets: [{
+        label: 'Dummy Data',
+        data: dummyData.map(entry => entry.births),
+        borderColor: 'steelblue',
+        borderWidth: 2,
+        fill: false
+      }]
+    },
+    options: {
+      scales: {
+        x: {
+    //      type: 'linear',
+          position: 'bottom'
+        },
+        y: {
+          min: 0
+        }
+      }
+    }
+  });
+
+  // Slider functionality
+  const futureYearsSlider = document.getElementById('futureYearsSlider');
+  const growthRateSlider = document.getElementById('growthRateSlider');
+  const selectedFutureYears = document.getElementById('selectedFutureYears');
+  const selectedGrowthRate = document.getElementById('selectedGrowthRate');
+
+  futureYearsSlider.oninput = function() {
+    selectedFutureYears.innerHTML = this.value;
+    updatePrognosisChart();
+  };
+
+  growthRateSlider.oninput = function() {
+    selectedGrowthRate.innerHTML = this.value + '%';
+    updatePrognosisChart();
+  };
+
+  // Function to update the chart with prognosis data
+  function updatePrognosisChart() {
+    const futureYears = parseInt(futureYearsSlider.value);
+    const growthRatePercentage = parseFloat(growthRateSlider.value);
+    const lastYearData = dummyData[dummyData.length - 1];
+    const prognosisData = [{ year: lastYearData.year + 1, births: lastYearData.births }];
+
+    for (let i = 2; i <= futureYears; i++) {
+      const birthsChange = prognosisData[prognosisData.length - 1].births * (growthRatePercentage / 100);
+      const newBirths = prognosisData[prognosisData.length - 1].births + birthsChange;
+      prognosisData.push({ year: lastYearData.year + i, births: newBirths });
+    }
+
+    // Update x-axis labels
+    const xAxisLabels = dummyData.map(entry => entry.year).concat(prognosisData.map(entry => entry.year));
+    chart.data.labels = xAxisLabels;
+
+    // Clear existing datasets
+    chart.data.datasets = [];
+
+    // Add the given data dataset
+    chart.data.datasets.push({
+      label: 'Dummy Data',
+      data: dummyData.map(entry => entry.births),
+      borderColor: 'steelblue',
+      borderWidth: 2,
+      fill: false
+    });
+
+    // Add the prognosis data dataset
+    chart.data.datasets.push({
+      label: 'Prognosis',
+      data: [...Array(dummyData.length).fill(null), ...prognosisData.map(entry => entry.births)],
+      borderColor: 'red',
+      borderWidth: 2,
+      fill: false
+    });
+
+    // Update the chart
+    chart.update();
+  }
+</script>
+
+<p>This is dummy data for demonstration purposes only.</p>
+
+</body>
+</html>
